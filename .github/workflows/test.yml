@@ -1,0 +1,21 @@
+name: Test
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  discussions: write
+  issues: read
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Beam test
+        if: ${{ github.event.issue.pull_request }}
+        uses: ./
