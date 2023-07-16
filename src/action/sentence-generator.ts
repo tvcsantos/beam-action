@@ -1,6 +1,6 @@
 import {randomInt} from 'crypto'
 import fs from 'fs/promises'
-import core from '@actions/core'
+import * as core from '@actions/core'
 
 const NEW_LINE_REGEX = /(\r)?\n/
 
