@@ -41,6 +41,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ActionOrchestrator = void 0;
 const github = __importStar(__nccwpck_require__(5438));
+const core = __importStar(__nccwpck_require__(2186));
 const beam_1 = __nccwpck_require__(2556);
 const facade_1 = __nccwpck_require__(7949);
 const deploy_command_handler_1 = __nccwpck_require__(6087);
@@ -50,9 +51,10 @@ class ActionOrchestrator {
         var _a, _b, _c;
         // Get the pull request information
         const { payload } = github.context;
-        const id = (_a = payload.pull_request) === null || _a === void 0 ? void 0 : _a.number;
+        const id = (_a = payload.issue) === null || _a === void 0 ? void 0 : _a.number;
         const owner = (_b = payload.repository) === null || _b === void 0 ? void 0 : _b.owner.login;
         const repo = (_c = payload.repository) === null || _c === void 0 ? void 0 : _c.name;
+        core.debug(`PR - id: ${id}, owner: ${owner}, repo: ${repo}`);
         if (!id || !owner || !repo) {
             throw new Error(UNABLE_TO_GET_PR_INFORMATION);
         }
@@ -70,7 +72,7 @@ class ActionOrchestrator {
             const pullRequest = this.getPullRequestInformation();
             const beam = beam_1.Beam.builder(this.inputs.botName, gitHubFacade)
                 .withReaction(this.inputs.botReaction)
-                .withHandler('deploy', new deploy_command_handler_1.DeployCommandHandler())
+                .withHandler(new deploy_command_handler_1.DeployCommandHandler())
                 .build();
             return beam.process(pullRequest);
         });
@@ -101,8 +103,8 @@ class BeamBuilder {
         this.reaction = reaction;
         return this;
     }
-    withHandler(command, handler) {
-        this.handlers.set(command, handler);
+    withHandler(handler) {
+        this.handlers.set(handler.id, handler);
         return this;
     }
     build() {
@@ -165,7 +167,7 @@ class Beam {
         this.name = name;
         this.reaction = reaction;
         this.gitHubFacade = gitHubFacade;
-        this.commandRegex = new RegExp(`(?:@)?${this.name}\\s+(\\w+)\\s*(.*)`);
+        this.commandRegex = new RegExp(`/${this.name}\\s+(\\w+)\\s*(.*)`);
         this.handlers = handlers;
     }
     process(pullRequest) {
@@ -181,6 +183,7 @@ class Beam {
                 };
                 const match = (_a = comment.body) === null || _a === void 0 ? void 0 : _a.match(this.commandRegex);
                 if (match) {
+                    core.debug(`Matched comment ${comment.id}`);
                     const command = match[1];
                     const args = match[2].split(/\s+/);
                     const handler = this.handlers.get(command);
@@ -193,8 +196,11 @@ class Beam {
                     }
                     // Lock command comment by reacting
                     yield this.gitHubFacade.addReactionToComment(commentMetadata, reaction);
+                    core.debug(`Reacted to comment ${comment.id}`);
                     handler === null || handler === void 0 ? void 0 : handler.handle(args);
-                    yield this.gitHubFacade.replyToComment(commentMetadata, handledComment);
+                    core.debug(`Command handler executed for comment ${comment.id}`);
+                    yield this.gitHubFacade.addCommentToPullRequest(pullRequest, handledComment);
+                    core.debug(`Replied with comment to pull request ${pullRequest.id}`);
                 }
             }
         });
@@ -209,10 +215,33 @@ exports.Beam = Beam;
 /***/ }),
 
 /***/ 7949:
-/***/ (function(__unused_webpack_module, exports) {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -224,6 +253,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.GitHubFacade = void 0;
+const core = __importStar(__nccwpck_require__(2186));
 class GitHubFacade {
     constructor(octokit) {
         this.octokit = octokit;
@@ -232,11 +262,13 @@ class GitHubFacade {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ) {
         return __awaiter(this, void 0, void 0, function* () {
+            core.debug(`Getting comments for pull request ${pullRequest.id}`);
             const { data: comments } = yield this.octokit.rest.issues.listComments({
                 owner: pullRequest.owner,
                 repo: pullRequest.repo,
                 issue_number: pullRequest.id
             });
+            core.debug(`Got ${comments.length} comments for pull request ${pullRequest.id}`);
             return comments;
         });
     }
@@ -245,28 +277,40 @@ class GitHubFacade {
     ) {
         return __awaiter(this, void 0, void 0, function* () {
             const comments = yield this.listPullRequestComments(pullRequest);
-            return comments.filter((comment) => __awaiter(this, void 0, void 0, function* () {
+            const filtered = [];
+            core.debug(`Filtering comments not reacted by ${reactor} on pull request ${pullRequest.id}`);
+            for (const comment of comments) {
                 const { data: reactions } = yield this.octokit.rest.reactions.listForIssueComment({
                     owner: pullRequest.owner,
                     repo: pullRequest.repo,
                     comment_id: comment.id
                 });
-                return !reactions.some(reaction => { var _a; return ((_a = reaction.user) === null || _a === void 0 ? void 0 : _a.login) === reactor; });
-            }));
+                core.debug(`Got ${reactions.length} reactions for comment ${comment.id}`);
+                const reactedByBeam = reactions.some(reaction => { var _a; return ((_a = reaction.user) === null || _a === void 0 ? void 0 : _a.login) === reactor; });
+                if (reactedByBeam) {
+                    core.debug(`${reactor} already reacted to comment ${comment.id} on pull request ${pullRequest.id}, skipping...`);
+                    continue;
+                }
+                filtered.push(comment);
+            }
+            core.debug(`Got ${filtered.length} comments on pull request ${pullRequest.id} that were not reacted by ${reactor}`);
+            return filtered;
         });
     }
-    replyToComment(comment, message) {
+    addCommentToPullRequest(pullRequest, message) {
         return __awaiter(this, void 0, void 0, function* () {
+            core.debug(`Creating comment on pull request ${pullRequest.id}`);
             yield this.octokit.rest.issues.createComment({
-                owner: comment.owner,
-                repo: comment.repo,
-                issue_number: comment.id,
+                owner: pullRequest.owner,
+                repo: pullRequest.repo,
+                issue_number: pullRequest.id,
                 body: message
             });
         });
     }
     addReactionToComment(comment, reaction) {
         return __awaiter(this, void 0, void 0, function* () {
+            core.debug(`Reacting to comment ${comment.id}`);
             yield this.octokit.rest.reactions.createForIssueComment({
                 owner: comment.owner,
                 repo: comment.repo,
@@ -298,6 +342,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DeployCommandHandler = void 0;
 class DeployCommandHandler {
+    constructor() {
+        this.id = 'deploy';
+    }
     handle() {
         return __awaiter(this, void 0, void 0, function* () {
             return Promise.resolve(undefined);

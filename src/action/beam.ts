@@ -29,7 +29,7 @@ export class Beam {
     this.name = name
     this.reaction = reaction
     this.gitHubFacade = gitHubFacade
-    this.commandRegex = new RegExp(`(?:@)?${this.name}\\s+(\\w+)\\s*(.*)`)
+    this.commandRegex = new RegExp(`/${this.name}\\s+(\\w+)\\s*(.*)`)
     this.handlers = handlers
   }
 
@@ -50,6 +50,8 @@ export class Beam {
       const match = comment.body?.match(this.commandRegex)
 
       if (match) {
+        core.debug(`Matched comment ${comment.id}`)
+
         const command = match[1]
         const args = match[2].split(/\s+/)
 
@@ -67,9 +69,18 @@ export class Beam {
         // Lock command comment by reacting
         await this.gitHubFacade.addReactionToComment(commentMetadata, reaction)
 
+        core.debug(`Reacted to comment ${comment.id}`)
+
         handler?.handle(args)
 
-        await this.gitHubFacade.replyToComment(commentMetadata, handledComment)
+        core.debug(`Command handler executed for comment ${comment.id}`)
+
+        await this.gitHubFacade.addCommentToPullRequest(
+          pullRequest,
+          handledComment
+        )
+
+        core.debug(`Replied with comment to pull request ${pullRequest.id}`)
       }
     }
   }

@@ -22,8 +22,8 @@ export class BeamBuilder {
     return this
   }
 
-  withHandler(command: string, handler: CommandHandler): BeamBuilder {
-    this.handlers.set(command, handler)
+  withHandler(handler: CommandHandler): BeamBuilder {
+    this.handlers.set(handler.id, handler)
     return this
   }
 

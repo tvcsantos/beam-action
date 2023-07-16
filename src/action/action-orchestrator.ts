@@ -1,5 +1,6 @@
 import {Inputs} from '../input/inputs'
 import * as github from '@actions/github'
+import * as core from '@actions/core'
 import {GitHub} from '@actions/github/lib/utils'
 import {Beam} from './beam'
 import {GitHubFacade} from '../github/facade'
@@ -14,9 +15,11 @@ export class ActionOrchestrator {
   private getPullRequestInformation(): GitHubElementIdentifier {
     // Get the pull request information
     const {payload} = github.context
-    const id = payload.pull_request?.number
+    const id = payload.issue?.number
     const owner = payload.repository?.owner.login
     const repo = payload.repository?.name
+
+    core.debug(`PR - id: ${id}, owner: ${owner}, repo: ${repo}`)
 
     if (!id || !owner || !repo) {
       throw new Error(UNABLE_TO_GET_PR_INFORMATION)
@@ -40,7 +43,7 @@ export class ActionOrchestrator {
 
     const beam = Beam.builder(this.inputs.botName, gitHubFacade)
       .withReaction(this.inputs.botReaction)
-      .withHandler('deploy', new DeployCommandHandler())
+      .withHandler(new DeployCommandHandler())
       .build()
 
     return beam.process(pullRequest)
