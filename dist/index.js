@@ -362,7 +362,7 @@ class GitHubFacade {
     }
     addCommentToPullRequest(pullRequest, message) {
         return __awaiter(this, void 0, void 0, function* () {
-            core.debug(`Creating comment on pull request ${pullRequest.id}`);
+            core.debug(`Creating comment on pull request ${JSON.stringify(pullRequest)}`);
             yield this.octokit.rest.issues.createComment({
                 owner: pullRequest.owner,
                 repo: pullRequest.repo,

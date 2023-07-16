@@ -65,7 +65,9 @@ export class GitHubFacade {
     pullRequest: GitHubElementIdentifier,
     message: string
   ): Promise<void> {
-    core.debug(`Creating comment on pull request ${pullRequest.id}`)
+    core.debug(
+      `Creating comment on pull request ${JSON.stringify(pullRequest)}`
+    )
     await this.octokit.rest.issues.createComment({
       owner: pullRequest.owner,
       repo: pullRequest.repo,
