@@ -2,7 +2,7 @@ import {randomInt} from 'crypto'
 import fs from 'fs/promises'
 import * as core from '@actions/core'
 
-const NEW_LINE_REGEX = /(\r)?\n/
+const NEW_LINE_REGEX = /\n/
 
 export class SentenceGenerator {
   private readonly path: string
