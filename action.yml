@@ -1,0 +1,23 @@
+name: 'beam'
+description: 'Your personal GitHub Binary Electronic Assistant Machine'
+
+branding:
+  icon: loader
+  color: white
+
+inputs:
+  bot-name:
+    required: true
+    description: 'The action will react to commands issued for this name'
+    default: 'beam'
+  bot-reaction:
+    required: true
+    description: 'The reaction that will be used to mark processed comments'
+    default: '+1'
+  token:
+    required: true
+    description: 'Your GitHub token'
+    default: ${{ github.token }}
+runs:
+  using: 'node16'
+  main: 'dist/index.js'
