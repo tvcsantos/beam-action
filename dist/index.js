@@ -269,7 +269,7 @@ exports.SentenceGenerator = void 0;
 const crypto_1 = __nccwpck_require__(6113);
 const promises_1 = __importDefault(__nccwpck_require__(3292));
 const core = __importStar(__nccwpck_require__(2186));
-const NEW_LINE_REGEX = /(\r)?\n/;
+const NEW_LINE_REGEX = /\n/;
 class SentenceGenerator {
     constructor(path) {
         this.path = path;
