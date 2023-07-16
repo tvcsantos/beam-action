@@ -245,6 +245,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SentenceGenerator = void 0;
 const crypto_1 = __nccwpck_require__(6113);
 const promises_1 = __importDefault(__nccwpck_require__(3292));
+const core_1 = __importDefault(__nccwpck_require__(2186));
 const NEW_LINE_REGEX = /(\r)?\n/;
 class SentenceGenerator {
     constructor(path) {
@@ -262,6 +263,7 @@ class SentenceGenerator {
         return __awaiter(this, void 0, void 0, function* () {
             const sentences = yield this.getSentences();
             const index = (0, crypto_1.randomInt)(0, sentences.length);
+            core_1.default.debug(`Next index:${index}, length:${sentences.length}`);
             return sentences[index];
         });
     }

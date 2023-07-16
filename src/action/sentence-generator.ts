@@ -1,5 +1,6 @@
 import {randomInt} from 'crypto'
 import fs from 'fs/promises'
+import core from '@actions/core'
 
 const NEW_LINE_REGEX = /(\r)?\n/
 
@@ -21,6 +22,7 @@ export class SentenceGenerator {
   async next(): Promise<string> {
     const sentences = await this.getSentences()
     const index = randomInt(0, sentences.length)
+    core.debug(`Next index:${index}, length:${sentences.length}`)
     return sentences[index]
   }
 
