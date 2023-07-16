@@ -23,12 +23,7 @@ export class SentenceGenerator {
   }
 
   private async readSentences(path: string): Promise<string[]> {
-    //const s = await fs.readFile(path, 'utf-8')
-    const file = await fs.open(path)
-    const responses: string[] = []
-    for await (const line of file.readLines()) {
-      responses.push(line)
-    }
-    return responses
+    const content = await fs.readFile(path, 'utf-8')
+    return content.split('\r\n')
   }
 }
