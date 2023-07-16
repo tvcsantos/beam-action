@@ -4,10 +4,10 @@ import {GitHubFacade} from '../github/facade'
 import {CommandHandler} from '../handler/command-handler'
 import {GitHubElementIdentifier} from '../github/model'
 import {Reaction} from '../types/types'
+import {SentenceGenerator} from './sentence-generator'
 
 const BOT_USER = 'github-actions[bot]'
 const DEFAULT_BAD_REACTION = '-1'
-const SUCCESS_HANDLE_COMMAND_MESSAGE = 'Command handled successfully!'
 const COULD_NOT_PROCESS_COMMAND = (command: string): string =>
   `Could not process command ${command}`
 const UNKNOWN_COMMAND = (command: string): string =>
@@ -19,11 +19,13 @@ export class Beam {
   private readonly gitHubFacade: GitHubFacade
   private readonly commandRegex: RegExp
   private readonly handlers: ReadonlyMap<string, CommandHandler>
+  private readonly sentenceGenerator: SentenceGenerator
 
   constructor(
     name: string,
     reaction: Reaction,
     gitHubFacade: GitHubFacade,
+    sentenceGenerator: SentenceGenerator,
     handlers: ReadonlyMap<string, CommandHandler>
   ) {
     this.name = name
@@ -31,6 +33,7 @@ export class Beam {
     this.gitHubFacade = gitHubFacade
     this.commandRegex = new RegExp(`/${this.name}\\s+(\\w+)\\s*(.*)`)
     this.handlers = handlers
+    this.sentenceGenerator = sentenceGenerator
   }
 
   async process(pullRequest: GitHubElementIdentifier): Promise<void> {
@@ -58,7 +61,8 @@ export class Beam {
         const handler = this.handlers.get(command)
 
         let reaction = this.reaction
-        let handledComment = SUCCESS_HANDLE_COMMAND_MESSAGE
+
+        let handledComment = await this.sentenceGenerator.next()
 
         if (handler === undefined) {
           core.warning(UNKNOWN_COMMAND(command))

@@ -91,13 +91,23 @@ exports.ActionOrchestrator = ActionOrchestrator;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.BeamBuilder = void 0;
 const beam_1 = __nccwpck_require__(2556);
+const sentence_generator_1 = __nccwpck_require__(7227);
 const DEFAULT_REACTION = '+1';
+const BEAM_POSITIVE_SENTENCES = 'beam-positive.txt';
 class BeamBuilder {
     constructor(name, gitHubFacade) {
         this.reaction = DEFAULT_REACTION;
         this.name = name;
         this.gitHubFacade = gitHubFacade;
         this.handlers = new Map();
+        this.sentenceGenerator = this.createSentenceGenerator();
+    }
+    createSentenceGenerator() {
+        const actionPath = process.env['GITHUB_ACTION_PATH'];
+        const filePath = actionPath === undefined
+            ? BEAM_POSITIVE_SENTENCES
+            : `${actionPath}/${BEAM_POSITIVE_SENTENCES}`;
+        return new sentence_generator_1.SentenceGenerator(filePath);
     }
     withReaction(reaction) {
         this.reaction = reaction;
@@ -108,7 +118,7 @@ class BeamBuilder {
         return this;
     }
     build() {
-        return new beam_1.Beam(this.name, this.reaction, this.gitHubFacade, this.handlers);
+        return new beam_1.Beam(this.name, this.reaction, this.gitHubFacade, this.sentenceGenerator, this.handlers);
     }
 }
 exports.BeamBuilder = BeamBuilder;
@@ -159,16 +169,16 @@ const core = __importStar(__nccwpck_require__(2186));
 const beam_builder_1 = __nccwpck_require__(9998);
 const BOT_USER = 'github-actions[bot]';
 const DEFAULT_BAD_REACTION = '-1';
-const SUCCESS_HANDLE_COMMAND_MESSAGE = 'Command handled successfully!';
 const COULD_NOT_PROCESS_COMMAND = (command) => `Could not process command ${command}`;
 const UNKNOWN_COMMAND = (command) => `Unknown command: ${command}`;
 class Beam {
-    constructor(name, reaction, gitHubFacade, handlers) {
+    constructor(name, reaction, gitHubFacade, sentenceGenerator, handlers) {
         this.name = name;
         this.reaction = reaction;
         this.gitHubFacade = gitHubFacade;
         this.commandRegex = new RegExp(`/${this.name}\\s+(\\w+)\\s*(.*)`);
         this.handlers = handlers;
+        this.sentenceGenerator = sentenceGenerator;
     }
     process(pullRequest) {
         var _a;
@@ -188,7 +198,7 @@ class Beam {
                     const args = match[2].split(/\s+/);
                     const handler = this.handlers.get(command);
                     let reaction = this.reaction;
-                    let handledComment = SUCCESS_HANDLE_COMMAND_MESSAGE;
+                    let handledComment = yield this.sentenceGenerator.next();
                     if (handler === undefined) {
                         core.warning(UNKNOWN_COMMAND(command));
                         reaction = DEFAULT_BAD_REACTION;
@@ -210,6 +220,83 @@ class Beam {
     }
 }
 exports.Beam = Beam;
+
+
+/***/ }),
+
+/***/ 7227:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __asyncValues = (this && this.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SentenceGenerator = void 0;
+const crypto_1 = __nccwpck_require__(6113);
+const promises_1 = __importDefault(__nccwpck_require__(3292));
+class SentenceGenerator {
+    constructor(path) {
+        this.path = path;
+    }
+    getSentences() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.sentences === undefined) {
+                this.sentences = yield this.readSentences(this.path);
+            }
+            return this.sentences;
+        });
+    }
+    next() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const sentences = yield this.getSentences();
+            const index = (0, crypto_1.randomInt)(0, sentences.length);
+            return sentences[index];
+        });
+    }
+    readSentences(path) {
+        var _a, e_1, _b, _c;
+        return __awaiter(this, void 0, void 0, function* () {
+            //const s = await fs.readFile(path, 'utf-8')
+            const file = yield promises_1.default.open(path);
+            const responses = [];
+            try {
+                for (var _d = true, _e = __asyncValues(file.readLines()), _f; _f = yield _e.next(), _a = _f.done, !_a; _d = true) {
+                    _c = _f.value;
+                    _d = false;
+                    const line = _c;
+                    responses.push(line);
+                }
+            }
+            catch (e_1_1) { e_1 = { error: e_1_1 }; }
+            finally {
+                try {
+                    if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
+                }
+                finally { if (e_1) throw e_1.error; }
+            }
+            return responses;
+        });
+    }
+}
+exports.SentenceGenerator = SentenceGenerator;
 
 
 /***/ }),
@@ -10151,6 +10238,14 @@ module.exports = require("events");
 
 "use strict";
 module.exports = require("fs");
+
+/***/ }),
+
+/***/ 3292:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("fs/promises");
 
 /***/ }),
 
