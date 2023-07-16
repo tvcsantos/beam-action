@@ -245,6 +245,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SentenceGenerator = void 0;
 const crypto_1 = __nccwpck_require__(6113);
 const promises_1 = __importDefault(__nccwpck_require__(3292));
+const NEW_LINE_REGEX = /(\r)?\n/;
 class SentenceGenerator {
     constructor(path) {
         this.path = path;
@@ -267,7 +268,7 @@ class SentenceGenerator {
     readSentences(path) {
         return __awaiter(this, void 0, void 0, function* () {
             const content = yield promises_1.default.readFile(path, 'utf-8');
-            return content.split('\r\n');
+            return content.split(NEW_LINE_REGEX);
         });
     }
 }

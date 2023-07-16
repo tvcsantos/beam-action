@@ -1,6 +1,8 @@
 import {randomInt} from 'crypto'
 import fs from 'fs/promises'
 
+const NEW_LINE_REGEX = /(\r)?\n/
+
 export class SentenceGenerator {
   private readonly path: string
   private sentences!: string[]
@@ -24,6 +26,6 @@ export class SentenceGenerator {
 
   private async readSentences(path: string): Promise<string[]> {
     const content = await fs.readFile(path, 'utf-8')
-    return content.split('\r\n')
+    return content.split(NEW_LINE_REGEX)
   }
 }
