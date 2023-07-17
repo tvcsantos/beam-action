@@ -2,7 +2,7 @@
 
 ![beam](docs/images/vegeta_beam_text.png)
 
-# beam
+# B.E.A.M.
 
 ![test workflow][test-badge]
 
@@ -10,7 +10,7 @@
 
 ## Overview
 
-`beam` will enhance your GitHub pull requests with IssueOps capabilities. You will ask `beam` to perform several tasks,
+B.E.A.M. or `beam` for short will enhance your GitHub pull requests with IssueOps capabilities. You will ask `beam` to perform several tasks,
 by commenting your pull requests with command-like syntax inputs.
 
 The following task are available:
