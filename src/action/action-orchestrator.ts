@@ -6,6 +6,10 @@ import {Beam} from './beam'
 import {GitHubFacade} from '../github/facade'
 import {DeployCommandHandler} from '../handler/deploy-command-handler'
 import {GitHubElementIdentifier} from '../github/model'
+import {simpleGit} from 'simple-git'
+import {State} from '../state/state'
+import {BeamSentenceFactory} from './sentence/factory/beam-sentence-factory'
+import {RandomSentenceGenerator} from './sentence/generator/random-sentence-generator'
 
 const UNABLE_TO_GET_PR_INFORMATION = 'Unable to get pull request information.'
 
@@ -41,11 +45,25 @@ export class ActionOrchestrator {
 
     const pullRequest = this.getPullRequestInformation()
 
-    const beam = Beam.builder(this.inputs.botName, gitHubFacade)
+    const state = new State(simpleGit(), this.inputs.stateBranch)
+
+    await state.hydrate()
+
+    const sentenceGenerator = new RandomSentenceGenerator(
+      new BeamSentenceFactory(inputs)
+    )
+
+    const beam = Beam.builder(
+      this.inputs.botName,
+      gitHubFacade,
+      sentenceGenerator
+    )
       .withReaction(this.inputs.botReaction)
       .withHandler(new DeployCommandHandler())
       .build()
 
-    return beam.process(pullRequest)
+    await beam.process(pullRequest)
+
+    await state.persist()
   }
 }

@@ -4,7 +4,7 @@ import {GitHubFacade} from '../github/facade'
 import {CommandHandler} from '../handler/command-handler'
 import {GitHubElementIdentifier} from '../github/model'
 import {Reaction} from '../types/types'
-import {SentenceGenerator} from './sentence-generator'
+import {SentenceGenerator} from './sentence/generator/sentence-generator'
 
 const BOT_USER = 'github-actions[bot]'
 const COULD_NOT_PROCESS_COMMAND = (command: string): string =>
@@ -42,8 +42,10 @@ export class Beam {
         BOT_USER
       )
 
+    const notMyComments = comments.filter(x => x.user !== BOT_USER)
+
     // Check each filtered comment for the specified pattern
-    for (const comment of comments) {
+    for (const comment of notMyComments) {
       const commentMetadata: GitHubElementIdentifier = {
         id: comment.id,
         owner: pullRequest.owner,
@@ -88,7 +90,11 @@ export class Beam {
     }
   }
 
-  static builder(name: string, gitHubFacade: GitHubFacade): BeamBuilder {
-    return new BeamBuilder(name, gitHubFacade)
+  static builder(
+    name: string,
+    gitHubFacade: GitHubFacade,
+    sentenceGenerator: SentenceGenerator
+  ): BeamBuilder {
+    return new BeamBuilder(name, gitHubFacade, sentenceGenerator)
   }
 }

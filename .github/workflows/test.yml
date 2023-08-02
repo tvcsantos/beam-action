@@ -5,7 +5,7 @@ on:
     types: [created]
 
 permissions:
-  contents: read
+  contents: write
   discussions: write
   issues: read
   pull-requests: write
@@ -19,3 +19,6 @@ jobs:
       - name: Beam test
         if: ${{ github.event.issue.pull_request }}
         uses: ./
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          ai-enabled: true

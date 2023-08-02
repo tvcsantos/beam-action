@@ -5,19 +5,33 @@ export interface Inputs {
   botName: string
   botReaction: Reaction
   token: string
+  openAIApiKey: string
+  aiEnabled: boolean
+  stateBranch: string
 }
 
 export enum Input {
   BOT_NAME = 'bot-name',
   BOT_REACTION = 'bot-reaction',
-  GITHUB_TOKEN = 'token'
+  GITHUB_TOKEN = 'token',
+  OPEN_AI_API_KEY = 'openai-api-key',
+  AI_ENABLED = 'ai-enabled',
+  STATE_BRANCH = 'state-branch'
 }
 
 export function gatherInputs(): Inputs {
   const botName = getInputBotName()
   const botReaction = getInputBotReaction()
   const token = getInputToken()
-  return {botName, botReaction, token}
+  const openAIApiKey = getInputOpenAIApiKey()
+  const aiEnabled = getInputAIEnabled()
+  const stateBranch = getInputStateBranch()
+
+  if (aiEnabled && !openAIApiKey) {
+    throw Error('AI enabled but OpenAI API key is missing!')
+  }
+
+  return {botName, botReaction, token, openAIApiKey, aiEnabled, stateBranch}
 }
 
 function getInputBotName(): string {
@@ -32,4 +46,16 @@ function getInputBotReaction(): Reaction {
 
 function getInputToken(): string {
   return core.getInput(Input.GITHUB_TOKEN, {required: true})
+}
+
+function getInputAIEnabled(): boolean {
+  return core.getBooleanInput(Input.AI_ENABLED)
+}
+
+function getInputOpenAIApiKey(): string {
+  return core.getInput(Input.OPEN_AI_API_KEY)
+}
+
+function getInputStateBranch(): string {
+  return core.getInput(Input.STATE_BRANCH)
 }

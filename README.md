@@ -47,11 +47,14 @@ jobs:
 
 ### Inputs
 
-| Input          | Type   | Required | Default Value         | Description                                                |
-|----------------|--------|----------|-----------------------|------------------------------------------------------------|
-| `bot-name`     | String | Yes      | `beam`                | The action will react to commands issued for this name.    |
-| `bot-reaction` | String | Yes      | `+1`                  | The reaction that will be used to mark processed comments. |
-| `token`        | Token  | No       | `${{ github.token }}` | Your GitHub token.                                         |
+| Input            | Type    | Required | Default Value         | Description                                                                        |
+|------------------|---------|----------|-----------------------|------------------------------------------------------------------------------------|
+| `bot-name`       | String  | Yes      | `beam`                | The action will react to commands issued for this name.                            |
+| `bot-reaction`   | String  | Yes      | `+1`                  | The reaction that will be used to mark processed comments.                         |
+| `token`          | Token   | No       | `${{ github.token }}` | Your GitHub token.                                                                 |
+| `state-branch`   | String  | No       | `beam-state`          | A branch used to keep action state.                                                |
+| `ai-enabled`     | Boolean | No       | `false`               | If you want to use AI features. When enabled you need to specify `openai-api-key`. |
+| `openai-api-key` | String  | No       |                       | The OpenAI API Key if AI is enabled.                                               |
 
 ### Outputs
 

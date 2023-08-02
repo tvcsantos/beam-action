@@ -18,6 +18,17 @@ inputs:
     required: true
     description: 'Your GitHub token'
     default: ${{ github.token }}
+  state-branch:
+    required: false
+    description: 'A branch used to keep action state'
+    default: 'beam-state'
+  ai-enabled:
+    required: false
+    description: 'If you want to use AI features'
+    default: 'false'
+  openai-api-key:
+    required: false
+    description: 'The OpenAI API Key if AI is enabled'
 runs:
   using: 'node16'
   main: 'dist/index.js'

@@ -2,11 +2,9 @@ import {GitHubFacade} from '../github/facade'
 import {CommandHandler} from '../handler/command-handler'
 import {Beam} from './beam'
 import {Reaction} from '../types/types'
-import {SentenceGenerator} from './sentence-generator'
+import {SentenceGenerator} from './sentence/generator/sentence-generator'
 
 const DEFAULT_REACTION = '+1'
-const BEAM_POSITIVE_SENTENCES = 'beam-positive.txt'
-const GITHUB_ACTION_PATH_VARIABLE = 'GITHUB_ACTION_PATH'
 
 export class BeamBuilder {
   private readonly name: string
@@ -15,20 +13,15 @@ export class BeamBuilder {
   private readonly handlers: Map<string, CommandHandler>
   private sentenceGenerator: SentenceGenerator
 
-  constructor(name: string, gitHubFacade: GitHubFacade) {
+  constructor(
+    name: string,
+    gitHubFacade: GitHubFacade,
+    sentenceGenerator: SentenceGenerator
+  ) {
     this.name = name
     this.gitHubFacade = gitHubFacade
     this.handlers = new Map<string, CommandHandler>()
-    this.sentenceGenerator = this.createSentenceGenerator()
-  }
-
-  private createSentenceGenerator(): SentenceGenerator {
-    const actionPath = process.env[GITHUB_ACTION_PATH_VARIABLE]
-    const filePath =
-      actionPath === undefined
-        ? BEAM_POSITIVE_SENTENCES
-        : `${actionPath}/${BEAM_POSITIVE_SENTENCES}`
-    return new SentenceGenerator(filePath)
+    this.sentenceGenerator = sentenceGenerator
   }
 
   withReaction(reaction: Reaction): BeamBuilder {

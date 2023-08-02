@@ -11,6 +11,7 @@ async function run(): Promise<void> {
 run().catch(error => {
   core.error(error)
   if (error instanceof Error) {
+    if (error.stack) core.error(error.stack)
     core.setFailed(error.message)
   }
 })
