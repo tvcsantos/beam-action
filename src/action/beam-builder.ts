@@ -11,7 +11,7 @@ export class BeamBuilder {
   private reaction: Reaction = DEFAULT_REACTION
   private readonly gitHubFacade: GitHubFacade
   private readonly handlers: Map<string, CommandHandler>
-  private sentenceGenerator: SentenceGenerator
+  private readonly sentenceGenerator: SentenceGenerator
 
   constructor(
     name: string,

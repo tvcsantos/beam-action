@@ -43,12 +43,12 @@ exports.ActionOrchestrator = void 0;
 const github = __importStar(__nccwpck_require__(5438));
 const core = __importStar(__nccwpck_require__(2186));
 const beam_1 = __nccwpck_require__(2556);
-const facade_1 = __nccwpck_require__(7949);
 const deploy_command_handler_1 = __nccwpck_require__(6087);
 const simple_git_1 = __nccwpck_require__(9103);
 const state_1 = __nccwpck_require__(3973);
 const beam_sentence_factory_1 = __nccwpck_require__(7742);
 const random_sentence_generator_1 = __nccwpck_require__(9936);
+const facade_1 = __nccwpck_require__(7949);
 const UNABLE_TO_GET_PR_INFORMATION = 'Unable to get pull request information.';
 class ActionOrchestrator {
     getPullRequestInformation() {
@@ -79,7 +79,7 @@ class ActionOrchestrator {
             const sentenceGenerator = new random_sentence_generator_1.RandomSentenceGenerator(new beam_sentence_factory_1.BeamSentenceFactory(inputs));
             const beam = beam_1.Beam.builder(this.inputs.botName, gitHubFacade, sentenceGenerator)
                 .withReaction(this.inputs.botReaction)
-                .withHandler(new deploy_command_handler_1.DeployCommandHandler())
+                .withHandler(new deploy_command_handler_1.DeployCommandHandler(gitHubFacade, github.context))
                 .build();
             yield beam.process(pullRequest);
             yield state.persist();
@@ -631,6 +631,11 @@ class GitHubFacade {
             });
         });
     }
+    deploy(request) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.octokit.rest.repos.createDeployment(Object.assign({}, request));
+        });
+    }
 }
 exports.GitHubFacade = GitHubFacade;
 
@@ -654,12 +659,21 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DeployCommandHandler = void 0;
 class DeployCommandHandler {
-    constructor() {
+    constructor(gitHubFacade, context) {
         this.id = 'deploy';
+        this.gitHubFacade = gitHubFacade;
+        this.context = context;
     }
-    handle() {
+    handle(args) {
         return __awaiter(this, void 0, void 0, function* () {
-            return Promise.resolve(undefined);
+            const environment = args.length > 0 ? args[1] : undefined;
+            const { repo, ref } = this.context;
+            yield this.gitHubFacade.deploy({
+                ref,
+                repo: repo.repo,
+                owner: repo.owner,
+                environment
+            });
         });
     }
 }

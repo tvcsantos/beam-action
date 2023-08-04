@@ -1,0 +1,12 @@
+name: Deployment
+
+on: deployment
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo Yeah!
+        shell: bash
+        # language=bash
+        run: echo "yeahhhhh!"

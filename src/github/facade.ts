@@ -1,5 +1,5 @@
 import {GitHub} from '@actions/github/lib/utils'
-import {GitHubElementIdentifier} from './model'
+import {GitHubDeploymentRequest, GitHubElementIdentifier} from './model'
 import {Reaction} from '../types/types'
 import * as core from '@actions/core'
 
@@ -89,5 +89,9 @@ export class GitHubFacade {
       comment_id: comment.id,
       content: reaction as never
     })
+  }
+
+  async deploy(request: GitHubDeploymentRequest): Promise<void> {
+    await this.octokit.rest.repos.createDeployment({...request})
   }
 }
