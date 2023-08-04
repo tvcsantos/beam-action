@@ -9,6 +9,7 @@ permissions:
   discussions: write
   issues: read
   pull-requests: write
+  deployments: write
 
 jobs:
   test:
