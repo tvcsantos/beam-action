@@ -6,7 +6,30 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: 🎟 Get GitHub App token
+        id: get-app-token
+        uses: getsentry/action-github-app-token@v2
+        with:
+          app_id: ${{ secrets.GHA_APP_ID }}
+          private_key: ${{ secrets.GHA_APP_PRIVATE_KEY }}
+      - name: start deployment
+        uses: bobheadxi/deployments@v1
+        id: deployment
+        with:
+          step: start
+          token: ${{ steps.get-app-token.outputs.token }}
+          env: ${{ github.event.deployment.environment }}
+          deployment_id: ${{ github.event.deployment.id }}
       - name: Echo Yeah!
         shell: bash
         # language=bash
         run: echo "yeahhhhh!"
+      - name: Update deployment status
+        uses: bobheadxi/deployments@v1
+        if: always()
+        with:
+          step: finish
+          token: ${{ steps.get-app-token.outputs.token }}
+          status: ${{ job.status }}
+          env: ${{ steps.deployment.outputs.env }}
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
