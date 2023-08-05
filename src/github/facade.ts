@@ -10,6 +10,18 @@ export class GitHubFacade {
     this.octokit = octokit
   }
 
+  async getPullRequestHeadRef(
+    pullRequest: GitHubElementIdentifier
+  ): Promise<string> {
+    core.debug(`Getting head ref for pull request ${pullRequest.id}`)
+    const {data} = await this.octokit.rest.pulls.get({
+      owner: pullRequest.owner,
+      repo: pullRequest.repo,
+      pull_number: pullRequest.id
+    })
+    return data.head.ref
+  }
+
   private async listPullRequestComments(
     pullRequest: GitHubElementIdentifier
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -83,7 +83,7 @@ export class ActionOrchestrator {
       sentenceGenerator
     )
       .withReaction(this.inputs.botReaction)
-      .withHandler(new DeployCommandHandler(gitHubFacade, github.context))
+      .withHandler(new DeployCommandHandler(gitHubFacade, pullRequest))
       .build()
 
     await beam.process(pullRequest)

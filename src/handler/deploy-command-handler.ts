@@ -1,24 +1,29 @@
 import {CommandHandler} from './command-handler'
 import {GitHubFacade} from '../github/facade'
-import {Context} from '@actions/github/lib/context'
+import {GitHubElementIdentifier} from '../github/model'
 
 export class DeployCommandHandler implements CommandHandler {
   readonly id = 'deploy'
   private readonly gitHubFacade: GitHubFacade
-  private readonly context: Context
+  private readonly pullRequestInformation: GitHubElementIdentifier
 
-  constructor(gitHubFacade: GitHubFacade, context: Context) {
+  constructor(
+    gitHubFacade: GitHubFacade,
+    pullRequestInformation: GitHubElementIdentifier
+  ) {
     this.gitHubFacade = gitHubFacade
-    this.context = context
+    this.pullRequestInformation = pullRequestInformation
   }
 
   async handle(args: string[]): Promise<void> {
     const environment = args.length > 0 ? args[1] : undefined
-    const {repo, ref} = this.context
+    const ref = await this.gitHubFacade.getPullRequestHeadRef(
+      this.pullRequestInformation
+    )
     await this.gitHubFacade.deploy({
       ref,
-      repo: repo.repo,
-      owner: repo.owner,
+      repo: this.pullRequestInformation.repo,
+      owner: this.pullRequestInformation.owner,
       environment
     })
   }

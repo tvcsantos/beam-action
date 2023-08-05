@@ -105,7 +105,7 @@ class ActionOrchestrator {
             const sentenceGenerator = new random_sentence_generator_1.RandomSentenceGenerator(new beam_sentence_factory_1.BeamSentenceFactory(inputs));
             const beam = beam_1.Beam.builder(this.inputs.botName, gitHubFacade, sentenceGenerator)
                 .withReaction(this.inputs.botReaction)
-                .withHandler(new deploy_command_handler_1.DeployCommandHandler(gitHubFacade, github.context))
+                .withHandler(new deploy_command_handler_1.DeployCommandHandler(gitHubFacade, pullRequest))
                 .build();
             yield beam.process(pullRequest);
             yield state.persist();
@@ -598,6 +598,17 @@ class GitHubFacade {
     constructor(octokit) {
         this.octokit = octokit;
     }
+    getPullRequestHeadRef(pullRequest) {
+        return __awaiter(this, void 0, void 0, function* () {
+            core.debug(`Getting head ref for pull request ${pullRequest.id}`);
+            const { data } = yield this.octokit.rest.pulls.get({
+                owner: pullRequest.owner,
+                repo: pullRequest.repo,
+                pull_number: pullRequest.id
+            });
+            return data.head.ref;
+        });
+    }
     listPullRequestComments(pullRequest
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ) {
@@ -694,19 +705,19 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DeployCommandHandler = void 0;
 class DeployCommandHandler {
-    constructor(gitHubFacade, context) {
+    constructor(gitHubFacade, pullRequestInformation) {
         this.id = 'deploy';
         this.gitHubFacade = gitHubFacade;
-        this.context = context;
+        this.pullRequestInformation = pullRequestInformation;
     }
     handle(args) {
         return __awaiter(this, void 0, void 0, function* () {
             const environment = args.length > 0 ? args[1] : undefined;
-            const { repo, ref } = this.context;
+            const ref = yield this.gitHubFacade.getPullRequestHeadRef(this.pullRequestInformation);
             yield this.gitHubFacade.deploy({
                 ref,
-                repo: repo.repo,
-                owner: repo.owner,
+                repo: this.pullRequestInformation.repo,
+                owner: this.pullRequestInformation.owner,
                 environment
             });
         });
