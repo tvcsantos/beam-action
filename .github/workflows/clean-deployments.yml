@@ -1,6 +1,13 @@
 name: Clean Deployments
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: 'Environment to clean'
+        required: false
+        default: 'production'
+        type: string
 
 jobs:
   clean-deployments:
@@ -16,5 +23,5 @@ jobs:
         uses: strumwolf/delete-deployment-environment@v2
         with:
           token: ${{ steps.get-app-token.outputs.token }}
-          environment: production
+          environment: ${{ github.event.inputs.env }}
           onlyRemoveDeployments: true
