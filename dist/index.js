@@ -85,7 +85,7 @@ class ActionOrchestrator {
             });
             return app.getInstallationOctokit(
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            parseInt(this.inputs.appInstallationId));
+            this.inputs.appInstallationId);
         });
     }
     execute(inputs) {
@@ -821,7 +821,7 @@ function getInputAppPrivateKey() {
     return core.getInput(Input.APP_PRIVATE_KEY, { required: true });
 }
 function getInputAppInstallationId() {
-    return core.getInput(Input.APP_INSTALLATION_ID, { required: true });
+    return parseInt(core.getInput(Input.APP_INSTALLATION_ID, { required: true }));
 }
 
 

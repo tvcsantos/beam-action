@@ -48,7 +48,7 @@ export class ActionOrchestrator {
     })
     return app.getInstallationOctokit(
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      parseInt(this.inputs!!.appInstallationId)
+      this.inputs!!.appInstallationId
     )
   }
 

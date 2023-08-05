@@ -9,7 +9,7 @@ export interface Inputs {
   stateBranch: string
   appId: string
   appPrivateKey: string
-  appInstallationId: string
+  appInstallationId: number
 }
 
 export enum Input {
@@ -80,6 +80,6 @@ function getInputAppPrivateKey(): string {
   return core.getInput(Input.APP_PRIVATE_KEY, {required: true})
 }
 
-function getInputAppInstallationId(): string {
-  return core.getInput(Input.APP_INSTALLATION_ID, {required: true})
+function getInputAppInstallationId(): number {
+  return parseInt(core.getInput(Input.APP_INSTALLATION_ID, {required: true}))
 }
