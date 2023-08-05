@@ -54,6 +54,7 @@ const random_sentence_generator_1 = __nccwpck_require__(9936);
 const facade_1 = __nccwpck_require__(7949);
 const octokit_1 = __nccwpck_require__(7467);
 const node_fetch_1 = __importDefault(__nccwpck_require__(4429));
+const utils_1 = __nccwpck_require__(1316);
 const UNABLE_TO_GET_PR_INFORMATION = 'Unable to get pull request information.';
 class ActionOrchestrator {
     getPullRequestInformation() {
@@ -92,9 +93,13 @@ class ActionOrchestrator {
             this.inputs = inputs;
             // Get the GitHub client
             const gitHubFacade = new facade_1.GitHubFacade(yield this.getOctokit());
-            const pullRequest = this.getPullRequestInformation();
             const app = yield gitHubFacade.app();
             core.debug(`beam running app: ${app}`);
+            if (github.context.actor === (0, utils_1.getBotUsernameFromApp)(app)) {
+                core.debug("It's a me, Mario! It's a self call I will return earlier");
+                return Promise.resolve(undefined);
+            }
+            const pullRequest = this.getPullRequestInformation();
             const state = new state_1.State((0, simple_git_1.simpleGit)(), this.inputs.stateBranch, app);
             yield state.hydrate();
             const sentenceGenerator = new random_sentence_generator_1.RandomSentenceGenerator(new beam_sentence_factory_1.BeamSentenceFactory(inputs));

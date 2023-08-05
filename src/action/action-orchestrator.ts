@@ -11,6 +11,7 @@ import {RandomSentenceGenerator} from './sentence/generator/random-sentence-gene
 import {GitHubFacade} from '../github/facade'
 import {App, Octokit} from 'octokit'
 import fetch from 'node-fetch'
+import {getBotUsernameFromApp} from '../utils/utils'
 
 const UNABLE_TO_GET_PR_INFORMATION = 'Unable to get pull request information.'
 
@@ -57,11 +58,16 @@ export class ActionOrchestrator {
     // Get the GitHub client
     const gitHubFacade = new GitHubFacade(await this.getOctokit())
 
-    const pullRequest = this.getPullRequestInformation()
-
     const app = await gitHubFacade.app()
 
     core.debug(`beam running app: ${app}`)
+
+    if (github.context.actor === getBotUsernameFromApp(app)) {
+      core.debug("It's a me, Mario! It's a self call I will return earlier")
+      return Promise.resolve(undefined)
+    }
+
+    const pullRequest = this.getPullRequestInformation()
 
     const state = new State(simpleGit(), this.inputs.stateBranch, app)
 
