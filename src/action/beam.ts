@@ -5,8 +5,8 @@ import {CommandHandler} from '../handler/command-handler'
 import {GitHubElementIdentifier} from '../github/model'
 import {Reaction} from '../types/types'
 import {SentenceGenerator} from './sentence/generator/sentence-generator'
+import {getBotUsernameFromApp} from '../utils/utils'
 
-const BOT_USER = 'github-actions[bot]'
 const COULD_NOT_PROCESS_COMMAND = (command: string): string =>
   `Could not process command ${command}`
 const UNKNOWN_COMMAND = (command: string): string =>
@@ -36,13 +36,16 @@ export class Beam {
   }
 
   async process(pullRequest: GitHubElementIdentifier): Promise<void> {
+    const app = await this.gitHubFacade.app()
+    const botUser = getBotUsernameFromApp(app)
+
     const comments =
       await this.gitHubFacade.listPullRequestCommentsNotReactedBy(
         pullRequest,
-        BOT_USER
+        botUser
       )
 
-    const notMyComments = comments.filter(x => x.user !== BOT_USER)
+    const notMyComments = comments.filter(x => x.user !== botUser)
 
     // Check each filtered comment for the specified pattern
     for (const comment of notMyComments) {

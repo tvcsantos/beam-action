@@ -23,3 +23,6 @@ jobs:
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           ai-enabled: true
+          app-id: ${{ secrets.GHA_APP_ID }}
+          app-private-key: ${{ secrets.GHA_APP_PRIVATE_KEY }}
+          app-installation-id: ${{ secrets.GHA_APP_INSTALLATION_ID }}

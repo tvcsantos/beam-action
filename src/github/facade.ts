@@ -1,12 +1,12 @@
-import {GitHub} from '@actions/github/lib/utils'
 import {GitHubDeploymentRequest, GitHubElementIdentifier} from './model'
 import {Reaction} from '../types/types'
 import * as core from '@actions/core'
+import {Octokit} from 'octokit'
 
 export class GitHubFacade {
-  private octokit: InstanceType<typeof GitHub>
+  private octokit: Octokit
 
-  constructor(octokit: InstanceType<typeof GitHub>) {
+  constructor(octokit: Octokit) {
     this.octokit = octokit
   }
 
@@ -93,5 +93,10 @@ export class GitHubFacade {
 
   async deploy(request: GitHubDeploymentRequest): Promise<void> {
     await this.octokit.rest.repos.createDeployment({...request})
+  }
+
+  async app(): Promise<string> {
+    const {data} = await this.octokit.rest.apps.getAuthenticated()
+    return data.slug ?? data.name.toLowerCase().replace(/ /g, '-')
   }
 }

@@ -1,15 +1,18 @@
 import {GitError, ResetMode, SimpleGit} from 'simple-git'
 import * as core from '@actions/core'
+import {getBotUsernameFromApp} from '../utils/utils'
 
 export class State {
   private readonly git: SimpleGit
   private readonly branch: string
   private readonly localFolder: string
+  private readonly app: string
 
-  constructor(git: SimpleGit, branch: string) {
+  constructor(git: SimpleGit, branch: string, app: string) {
     this.git = git
     this.branch = branch
     this.localFolder = `.${this.branch}/`
+    this.app = app
   }
 
   private async checkStateIgnore(): Promise<boolean> {
@@ -95,16 +98,20 @@ export class State {
     await this.git.cwd({path: this.localFolder, root: false}).add('.')
 
     await this.git
-      .addConfig('user.name', 'github-actions[bot]')
-      .addConfig('user.email', 'github-actions[bot]@users.noreply.github.com')
+      .addConfig('user.name', this.app)
+      .addConfig(
+        'user.email',
+        `${getBotUsernameFromApp(this.app)}@users.noreply.github.com`
+      )
       .cwd({path: this.localFolder, root: false})
       .commit(`${this.branch} update`)
   }
 
   private async cleanup(): Promise<void> {
     core.debug(`Cleaning action ${this.branch} branch`)
-    await this.git.raw('worktree', 'remove', `.${this.branch}`)
-    await this.git.deleteLocalBranch(this.branch, true)
+    await this.git
+      .raw('worktree', 'remove', `.${this.branch}`)
+      .deleteLocalBranch(this.branch, true)
   }
 
   async persist(): Promise<void> {

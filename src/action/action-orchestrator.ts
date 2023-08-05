@@ -1,7 +1,6 @@
 import {Inputs} from '../input/inputs'
 import * as github from '@actions/github'
 import * as core from '@actions/core'
-import {GitHub} from '@actions/github/lib/utils'
 import {Beam} from './beam'
 import {DeployCommandHandler} from '../handler/deploy-command-handler'
 import {GitHubElementIdentifier} from '../github/model'
@@ -10,6 +9,8 @@ import {State} from '../state/state'
 import {BeamSentenceFactory} from './sentence/factory/beam-sentence-factory'
 import {RandomSentenceGenerator} from './sentence/generator/random-sentence-generator'
 import {GitHubFacade} from '../github/facade'
+import {App, Octokit} from 'octokit'
+import fetch from 'node-fetch'
 
 const UNABLE_TO_GET_PR_INFORMATION = 'Unable to get pull request information.'
 
@@ -32,20 +33,37 @@ export class ActionOrchestrator {
     return {id, owner, repo}
   }
 
-  private getOctokit(): InstanceType<typeof GitHub> {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return github.getOctokit(this.inputs!!.token)
+  private async getOctokit(): Promise<Octokit> {
+    const app = new App({
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      appId: this.inputs!!.appId,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      privateKey: this.inputs!!.appPrivateKey,
+      Octokit: Octokit.defaults({
+        request: {
+          fetch
+        }
+      })
+    })
+    return app.getInstallationOctokit(
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      parseInt(this.inputs!!.appInstallationId)
+    )
   }
 
   async execute(inputs: Inputs): Promise<void> {
     this.inputs = inputs
 
     // Get the GitHub client
-    const gitHubFacade = new GitHubFacade(this.getOctokit())
+    const gitHubFacade = new GitHubFacade(await this.getOctokit())
 
     const pullRequest = this.getPullRequestInformation()
 
-    const state = new State(simpleGit(), this.inputs.stateBranch)
+    const app = await gitHubFacade.app()
+
+    core.debug(`beam running app: ${app}`)
+
+    const state = new State(simpleGit(), this.inputs.stateBranch, app)
 
     await state.hydrate()
 

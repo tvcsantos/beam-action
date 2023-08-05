@@ -14,10 +14,6 @@ inputs:
     required: true
     description: 'The reaction that will be used to mark processed comments'
     default: '+1'
-  token:
-    required: true
-    description: 'Your GitHub token'
-    default: ${{ github.token }}
   state-branch:
     required: false
     description: 'A branch used to keep action state'
@@ -29,6 +25,15 @@ inputs:
   openai-api-key:
     required: false
     description: 'The OpenAI API Key if AI is enabled'
+  app-id:
+    required: true
+    description: 'The bound application identifier'
+  app-private-key:
+    required: true
+    description: 'The bound application private key'
+  app-installation-id:
+    required: true
+    description: 'The bound application installation id'
 runs:
   using: 'node16'
   main: 'dist/index.js'

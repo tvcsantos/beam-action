@@ -7,3 +7,7 @@ export function getGitHubActionPath(): string | undefined {
 export function getFolderForBranch(branch: string): string {
   return `.${branch}`
 }
+
+export function getBotUsernameFromApp(app: string): string {
+  return `${app}[bot]`
+}

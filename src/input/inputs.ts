@@ -4,10 +4,12 @@ import {isOfTypeReaction, Reaction} from '../types/types'
 export interface Inputs {
   botName: string
   botReaction: Reaction
-  token: string
   openAIApiKey: string
   aiEnabled: boolean
   stateBranch: string
+  appId: string
+  appPrivateKey: string
+  appInstallationId: string
 }
 
 export enum Input {
@@ -16,22 +18,36 @@ export enum Input {
   GITHUB_TOKEN = 'token',
   OPEN_AI_API_KEY = 'openai-api-key',
   AI_ENABLED = 'ai-enabled',
-  STATE_BRANCH = 'state-branch'
+  STATE_BRANCH = 'state-branch',
+  APP_ID = 'app-id',
+  APP_PRIVATE_KEY = 'app-private-key',
+  APP_INSTALLATION_ID = 'app-installation-id'
 }
 
 export function gatherInputs(): Inputs {
   const botName = getInputBotName()
   const botReaction = getInputBotReaction()
-  const token = getInputToken()
   const openAIApiKey = getInputOpenAIApiKey()
   const aiEnabled = getInputAIEnabled()
   const stateBranch = getInputStateBranch()
+  const appId = getInputAppId()
+  const appPrivateKey = getInputAppPrivateKey()
+  const appInstallationId = getInputAppInstallationId()
 
   if (aiEnabled && !openAIApiKey) {
     throw Error('AI enabled but OpenAI API key is missing!')
   }
 
-  return {botName, botReaction, token, openAIApiKey, aiEnabled, stateBranch}
+  return {
+    botName,
+    botReaction,
+    openAIApiKey,
+    aiEnabled,
+    stateBranch,
+    appId,
+    appPrivateKey,
+    appInstallationId
+  }
 }
 
 function getInputBotName(): string {
@@ -44,10 +60,6 @@ function getInputBotReaction(): Reaction {
   throw new Error(`Invalid ${Input.BOT_REACTION} input '${reaction}'`)
 }
 
-function getInputToken(): string {
-  return core.getInput(Input.GITHUB_TOKEN, {required: true})
-}
-
 function getInputAIEnabled(): boolean {
   return core.getBooleanInput(Input.AI_ENABLED)
 }
@@ -58,4 +70,16 @@ function getInputOpenAIApiKey(): string {
 
 function getInputStateBranch(): string {
   return core.getInput(Input.STATE_BRANCH)
+}
+
+function getInputAppId(): string {
+  return core.getInput(Input.APP_ID, {required: true})
+}
+
+function getInputAppPrivateKey(): string {
+  return core.getInput(Input.APP_PRIVATE_KEY, {required: true})
+}
+
+function getInputAppInstallationId(): string {
+  return core.getInput(Input.APP_INSTALLATION_ID, {required: true})
 }
