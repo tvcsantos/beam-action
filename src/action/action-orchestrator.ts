@@ -3,7 +3,7 @@ import * as github from '@actions/github'
 import * as core from '@actions/core'
 import {Beam} from './beam'
 import {DeployCommandHandler} from '../handler/deploy-command-handler'
-import {GitHubElementIdentifier} from '../github/model'
+import {CommentPayload, GitHubElementIdentifier} from '../github/model'
 import {simpleGit} from 'simple-git'
 import {State} from '../state/state'
 import {BeamSentenceFactory} from './sentence/factory/beam-sentence-factory'
@@ -14,6 +14,7 @@ import fetch from 'node-fetch'
 import {getBotUsernameFromApp} from '../utils/utils'
 
 const UNABLE_TO_GET_PR_INFORMATION = 'Unable to get pull request information.'
+const UNABLE_TO_GET_COMMENT_PAYLOAD = 'Unable to get comment payload.'
 
 export class ActionOrchestrator {
   private inputs?: Inputs
@@ -21,6 +22,7 @@ export class ActionOrchestrator {
   private getPullRequestInformation(): GitHubElementIdentifier {
     // Get the pull request information
     const {payload} = github.context
+    core.debug(JSON.stringify(payload))
     const id = payload.issue?.number
     const owner = payload.repository?.owner.login
     const repo = payload.repository?.name
@@ -32,6 +34,15 @@ export class ActionOrchestrator {
     }
 
     return {id, owner, repo}
+  }
+
+  private getCommentPayload(): CommentPayload {
+    const {payload} = github.context
+    const comment = payload.comment
+    if (!comment) {
+      throw new Error(UNABLE_TO_GET_COMMENT_PAYLOAD)
+    }
+    return comment
   }
 
   private async getOctokit(): Promise<Octokit> {
@@ -68,6 +79,7 @@ export class ActionOrchestrator {
     }
 
     const pullRequest = this.getPullRequestInformation()
+    const comment = this.getCommentPayload()
 
     const state = new State(simpleGit(), this.inputs.stateBranch, app)
 
@@ -86,7 +98,7 @@ export class ActionOrchestrator {
       .withHandler(new DeployCommandHandler(gitHubFacade, pullRequest))
       .build()
 
-    await beam.process(pullRequest)
+    await beam.process(pullRequest, comment)
 
     await state.persist()
   }

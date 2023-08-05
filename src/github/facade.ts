@@ -1,4 +1,8 @@
-import {GitHubDeploymentRequest, GitHubElementIdentifier} from './model'
+import {
+  GitHubDeploymentRequest,
+  GitHubDispatchEventRequest,
+  GitHubElementIdentifier
+} from './model'
 import {Reaction} from '../types/types'
 import * as core from '@actions/core'
 import {Octokit} from 'octokit'
@@ -49,17 +53,11 @@ export class GitHubFacade {
       `Filtering comments not reacted by ${reactor} on pull request ${pullRequest.id}`
     )
     for (const comment of comments) {
-      const {data: reactions} =
-        await this.octokit.rest.reactions.listForIssueComment({
-          owner: pullRequest.owner,
-          repo: pullRequest.repo,
-          comment_id: comment.id
-        })
-      core.debug(`Got ${reactions.length} reactions for comment ${comment.id}`)
-      const reactedByBeam = reactions.some(
-        reaction => reaction.user?.login === reactor
+      const reactedByReactor = await this.isCommentReactedBy(
+        {owner: pullRequest.owner, repo: pullRequest.repo, id: comment.id},
+        reactor
       )
-      if (reactedByBeam) {
+      if (reactedByReactor) {
         core.debug(
           `${reactor} already reacted to comment ${comment.id} on pull request ${pullRequest.id}, skipping...`
         )
@@ -71,6 +69,20 @@ export class GitHubFacade {
       `Got ${filtered.length} comments on pull request ${pullRequest.id} that were not reacted by ${reactor}`
     )
     return filtered
+  }
+
+  async isCommentReactedBy(
+    comment: GitHubElementIdentifier,
+    reactor: string
+  ): Promise<boolean> {
+    const {data: reactions} =
+      await this.octokit.rest.reactions.listForIssueComment({
+        owner: comment.owner,
+        repo: comment.repo,
+        comment_id: comment.id
+      })
+    core.debug(`Got ${reactions.length} reactions for comment ${comment.id}`)
+    return reactions.some(reaction => reaction.user?.login === reactor)
   }
 
   async addCommentToPullRequest(
@@ -105,6 +117,10 @@ export class GitHubFacade {
 
   async deploy(request: GitHubDeploymentRequest): Promise<void> {
     await this.octokit.rest.repos.createDeployment({...request})
+  }
+
+  async dispatch(request: GitHubDispatchEventRequest): Promise<void> {
+    await this.octokit.rest.repos.createDispatchEvent({...request})
   }
 
   async app(): Promise<string> {

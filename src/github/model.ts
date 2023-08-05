@@ -4,6 +4,12 @@ export interface GitHubElementIdentifier {
   repo: string
 }
 
+export interface CommentPayload {
+  id: number
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any
+}
+
 export interface GitHubDeploymentRequest {
   owner: string
   repo: string
@@ -16,4 +22,11 @@ export interface GitHubDeploymentRequest {
   description?: string | null
   transient_environment?: boolean
   production_environment?: boolean
+}
+
+export interface GitHubDispatchEventRequest {
+  owner: string
+  repo: string
+  event_type: string
+  client_payload?: {[key: string]: unknown}
 }

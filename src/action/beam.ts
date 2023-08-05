@@ -2,7 +2,7 @@ import * as core from '@actions/core'
 import {BeamBuilder} from './beam-builder'
 import {GitHubFacade} from '../github/facade'
 import {CommandHandler} from '../handler/command-handler'
-import {GitHubElementIdentifier} from '../github/model'
+import {CommentPayload, GitHubElementIdentifier} from '../github/model'
 import {Reaction} from '../types/types'
 import {SentenceGenerator} from './sentence/generator/sentence-generator'
 import {getBotUsernameFromApp} from '../utils/utils'
@@ -35,61 +35,78 @@ export class Beam {
     this.sentenceGenerator = sentenceGenerator
   }
 
-  async process(pullRequest: GitHubElementIdentifier): Promise<void> {
+  async process(
+    pullRequest: GitHubElementIdentifier,
+    comment: CommentPayload
+  ): Promise<void> {
     const app = await this.gitHubFacade.app()
     const botUser = getBotUsernameFromApp(app)
 
-    const comments =
-      await this.gitHubFacade.listPullRequestCommentsNotReactedBy(
-        pullRequest,
-        botUser
+    const commentMetadata: GitHubElementIdentifier = {
+      id: comment.id,
+      owner: pullRequest.owner,
+      repo: pullRequest.repo
+    }
+
+    const reactedByBotUser = await this.gitHubFacade.isCommentReactedBy(
+      commentMetadata,
+      botUser
+    )
+
+    if (reactedByBotUser) {
+      core.debug(
+        `${reactedByBotUser} already reacted to comment ${comment.id} on pull request ${pullRequest.id}, skipping...`
+      )
+      return Promise.resolve(undefined)
+    }
+
+    if (comment.user.login === botUser) {
+      core.debug('Processing a self comment, skipping...')
+      return Promise.resolve(undefined)
+    }
+
+    const match = comment.body?.match(this.commandRegex)
+
+    if (match) {
+      core.debug(`Matched comment ${comment.id}`)
+
+      const command = match[1]
+      const args: string[] = match[2]
+        .split(/\s+/)
+        .map((x: string) => x.trim())
+        .filter((x: string) => !!x)
+
+      core.debug(
+        `Command: ${command}, Arguments size: ${args.length}, Arguments: ${args}`
       )
 
-    const notMyComments = comments.filter(x => x.user !== botUser)
+      const handler = this.handlers.get(command)
 
-    // Check each filtered comment for the specified pattern
-    for (const comment of notMyComments) {
-      const commentMetadata: GitHubElementIdentifier = {
-        id: comment.id,
-        owner: pullRequest.owner,
-        repo: pullRequest.repo
+      let handledComment = await this.sentenceGenerator.next()
+
+      if (handler === undefined) {
+        core.warning(UNKNOWN_COMMAND(command))
+        handledComment = COULD_NOT_PROCESS_COMMAND(command)
       }
-      const match = comment.body?.match(this.commandRegex)
 
-      if (match) {
-        core.debug(`Matched comment ${comment.id}`)
+      // Lock command comment by reacting
+      await this.gitHubFacade.addReactionToComment(
+        commentMetadata,
+        this.reaction
+      )
 
-        const command = match[1]
-        const args = match[2].split(/\s+/)
+      core.debug(`Reacted to comment ${comment.id}`)
 
-        const handler = this.handlers.get(command)
+      handler?.handle(args)
 
-        let handledComment = await this.sentenceGenerator.next()
+      core.debug(`Command handler executed for comment ${comment.id}`)
 
-        if (handler === undefined) {
-          core.warning(UNKNOWN_COMMAND(command))
-          handledComment = COULD_NOT_PROCESS_COMMAND(command)
-        }
+      await this.gitHubFacade.addCommentToPullRequest(
+        pullRequest,
+        handledComment
+      )
 
-        // Lock command comment by reacting
-        await this.gitHubFacade.addReactionToComment(
-          commentMetadata,
-          this.reaction
-        )
-
-        core.debug(`Reacted to comment ${comment.id}`)
-
-        handler?.handle(args)
-
-        core.debug(`Command handler executed for comment ${comment.id}`)
-
-        await this.gitHubFacade.addCommentToPullRequest(
-          pullRequest,
-          handledComment
-        )
-
-        core.debug(`Replied with comment to pull request ${pullRequest.id}`)
-      }
+      core.debug(`Replied with comment to pull request ${pullRequest.id}`)
     }
   }
 

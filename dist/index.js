@@ -56,11 +56,13 @@ const octokit_1 = __nccwpck_require__(7467);
 const node_fetch_1 = __importDefault(__nccwpck_require__(4429));
 const utils_1 = __nccwpck_require__(1316);
 const UNABLE_TO_GET_PR_INFORMATION = 'Unable to get pull request information.';
+const UNABLE_TO_GET_COMMENT_PAYLOAD = 'Unable to get comment payload.';
 class ActionOrchestrator {
     getPullRequestInformation() {
         var _a, _b, _c;
         // Get the pull request information
         const { payload } = github.context;
+        core.debug(JSON.stringify(payload));
         const id = (_a = payload.issue) === null || _a === void 0 ? void 0 : _a.number;
         const owner = (_b = payload.repository) === null || _b === void 0 ? void 0 : _b.owner.login;
         const repo = (_c = payload.repository) === null || _c === void 0 ? void 0 : _c.name;
@@ -69,6 +71,14 @@ class ActionOrchestrator {
             throw new Error(UNABLE_TO_GET_PR_INFORMATION);
         }
         return { id, owner, repo };
+    }
+    getCommentPayload() {
+        const { payload } = github.context;
+        const comment = payload.comment;
+        if (!comment) {
+            throw new Error(UNABLE_TO_GET_COMMENT_PAYLOAD);
+        }
+        return comment;
     }
     getOctokit() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -100,6 +110,7 @@ class ActionOrchestrator {
                 return Promise.resolve(undefined);
             }
             const pullRequest = this.getPullRequestInformation();
+            const comment = this.getCommentPayload();
             const state = new state_1.State((0, simple_git_1.simpleGit)(), this.inputs.stateBranch, app);
             yield state.hydrate();
             const sentenceGenerator = new random_sentence_generator_1.RandomSentenceGenerator(new beam_sentence_factory_1.BeamSentenceFactory(inputs));
@@ -107,7 +118,7 @@ class ActionOrchestrator {
                 .withReaction(this.inputs.botReaction)
                 .withHandler(new deploy_command_handler_1.DeployCommandHandler(gitHubFacade, pullRequest))
                 .build();
-            yield beam.process(pullRequest);
+            yield beam.process(pullRequest, comment);
             yield state.persist();
         });
     }
@@ -204,39 +215,47 @@ class Beam {
         this.handlers = handlers;
         this.sentenceGenerator = sentenceGenerator;
     }
-    process(pullRequest) {
+    process(pullRequest, comment) {
         var _a;
         return __awaiter(this, void 0, void 0, function* () {
             const app = yield this.gitHubFacade.app();
             const botUser = (0, utils_1.getBotUsernameFromApp)(app);
-            const comments = yield this.gitHubFacade.listPullRequestCommentsNotReactedBy(pullRequest, botUser);
-            const notMyComments = comments.filter(x => x.user !== botUser);
-            // Check each filtered comment for the specified pattern
-            for (const comment of notMyComments) {
-                const commentMetadata = {
-                    id: comment.id,
-                    owner: pullRequest.owner,
-                    repo: pullRequest.repo
-                };
-                const match = (_a = comment.body) === null || _a === void 0 ? void 0 : _a.match(this.commandRegex);
-                if (match) {
-                    core.debug(`Matched comment ${comment.id}`);
-                    const command = match[1];
-                    const args = match[2].split(/\s+/);
-                    const handler = this.handlers.get(command);
-                    let handledComment = yield this.sentenceGenerator.next();
-                    if (handler === undefined) {
-                        core.warning(UNKNOWN_COMMAND(command));
-                        handledComment = COULD_NOT_PROCESS_COMMAND(command);
-                    }
-                    // Lock command comment by reacting
-                    yield this.gitHubFacade.addReactionToComment(commentMetadata, this.reaction);
-                    core.debug(`Reacted to comment ${comment.id}`);
-                    handler === null || handler === void 0 ? void 0 : handler.handle(args);
-                    core.debug(`Command handler executed for comment ${comment.id}`);
-                    yield this.gitHubFacade.addCommentToPullRequest(pullRequest, handledComment);
-                    core.debug(`Replied with comment to pull request ${pullRequest.id}`);
+            const commentMetadata = {
+                id: comment.id,
+                owner: pullRequest.owner,
+                repo: pullRequest.repo
+            };
+            const reactedByBotUser = yield this.gitHubFacade.isCommentReactedBy(commentMetadata, botUser);
+            if (reactedByBotUser) {
+                core.debug(`${reactedByBotUser} already reacted to comment ${comment.id} on pull request ${pullRequest.id}, skipping...`);
+                return Promise.resolve(undefined);
+            }
+            if (comment.user.login === botUser) {
+                core.debug('Processing a self comment, skipping...');
+                return Promise.resolve(undefined);
+            }
+            const match = (_a = comment.body) === null || _a === void 0 ? void 0 : _a.match(this.commandRegex);
+            if (match) {
+                core.debug(`Matched comment ${comment.id}`);
+                const command = match[1];
+                const args = match[2]
+                    .split(/\s+/)
+                    .map((x) => x.trim())
+                    .filter((x) => !!x);
+                core.debug(`Command: ${command}, Arguments size: ${args.length}, Arguments: ${args}`);
+                const handler = this.handlers.get(command);
+                let handledComment = yield this.sentenceGenerator.next();
+                if (handler === undefined) {
+                    core.warning(UNKNOWN_COMMAND(command));
+                    handledComment = COULD_NOT_PROCESS_COMMAND(command);
                 }
+                // Lock command comment by reacting
+                yield this.gitHubFacade.addReactionToComment(commentMetadata, this.reaction);
+                core.debug(`Reacted to comment ${comment.id}`);
+                handler === null || handler === void 0 ? void 0 : handler.handle(args);
+                core.debug(`Command handler executed for comment ${comment.id}`);
+                yield this.gitHubFacade.addCommentToPullRequest(pullRequest, handledComment);
+                core.debug(`Replied with comment to pull request ${pullRequest.id}`);
             }
         });
     }
@@ -631,14 +650,8 @@ class GitHubFacade {
             const filtered = [];
             core.debug(`Filtering comments not reacted by ${reactor} on pull request ${pullRequest.id}`);
             for (const comment of comments) {
-                const { data: reactions } = yield this.octokit.rest.reactions.listForIssueComment({
-                    owner: pullRequest.owner,
-                    repo: pullRequest.repo,
-                    comment_id: comment.id
-                });
-                core.debug(`Got ${reactions.length} reactions for comment ${comment.id}`);
-                const reactedByBeam = reactions.some(reaction => { var _a; return ((_a = reaction.user) === null || _a === void 0 ? void 0 : _a.login) === reactor; });
-                if (reactedByBeam) {
+                const reactedByReactor = yield this.isCommentReactedBy({ owner: pullRequest.owner, repo: pullRequest.repo, id: comment.id }, reactor);
+                if (reactedByReactor) {
                     core.debug(`${reactor} already reacted to comment ${comment.id} on pull request ${pullRequest.id}, skipping...`);
                     continue;
                 }
@@ -646,6 +659,17 @@ class GitHubFacade {
             }
             core.debug(`Got ${filtered.length} comments on pull request ${pullRequest.id} that were not reacted by ${reactor}`);
             return filtered;
+        });
+    }
+    isCommentReactedBy(comment, reactor) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { data: reactions } = yield this.octokit.rest.reactions.listForIssueComment({
+                owner: comment.owner,
+                repo: comment.repo,
+                comment_id: comment.id
+            });
+            core.debug(`Got ${reactions.length} reactions for comment ${comment.id}`);
+            return reactions.some(reaction => { var _a; return ((_a = reaction.user) === null || _a === void 0 ? void 0 : _a.login) === reactor; });
         });
     }
     addCommentToPullRequest(pullRequest, message) {
@@ -675,6 +699,11 @@ class GitHubFacade {
             yield this.octokit.rest.repos.createDeployment(Object.assign({}, request));
         });
     }
+    dispatch(request) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.octokit.rest.repos.createDispatchEvent(Object.assign({}, request));
+        });
+    }
     app() {
         var _a;
         return __awaiter(this, void 0, void 0, function* () {
@@ -689,10 +718,33 @@ exports.GitHubFacade = GitHubFacade;
 /***/ }),
 
 /***/ 6087:
-/***/ (function(__unused_webpack_module, exports) {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -704,6 +756,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DeployCommandHandler = void 0;
+const core = __importStar(__nccwpck_require__(2186));
 class DeployCommandHandler {
     constructor(gitHubFacade, pullRequestInformation) {
         this.id = 'deploy';
@@ -712,7 +765,8 @@ class DeployCommandHandler {
     }
     handle(args) {
         return __awaiter(this, void 0, void 0, function* () {
-            const environment = args.length > 0 ? args[1] : undefined;
+            const environment = args.length > 0 ? args[0] : undefined;
+            core.debug(`Deploying to environment: ${environment}`);
             const ref = yield this.gitHubFacade.getPullRequestHeadRef(this.pullRequestInformation);
             yield this.gitHubFacade.deploy({
                 ref,
