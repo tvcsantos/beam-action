@@ -1,0 +1,20 @@
+name: Clean Deployments
+
+on: workflow_dispatch
+
+jobs:
+  clean-deployments:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🎟 Get GitHub App token
+        id: get-app-token
+        uses: getsentry/action-github-app-token@v2
+        with:
+          app_id: ${{ secrets.GHA_APP_ID }}
+          private_key: ${{ secrets.GHA_APP_PRIVATE_KEY }}
+      - name: 🗑 Delete deployment environment
+        uses: strumwolf/delete-deployment-environment@v2
+        with:
+          token: ${{ steps.get-app-token.outputs.token }}
+          environment: production
+          onlyRemoveDeployments: true
